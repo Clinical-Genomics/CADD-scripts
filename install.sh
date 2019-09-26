@@ -18,81 +18,78 @@ then
     exit 1;
 fi
 
-echo "The following questions will quide you through selecting the files and dependencies needed for CADD."
-echo "After this, you will see an overview of the selected files before the download and installation starts."
-echo "Please note, that for successfully running CADD locally, you will need the conda environment and at least one set of annotations."
-echo ""
+usage="$(basename "$0") [-h] [-d] [-v <caddversion>] [-a] [-p] [-n] [-i] [-r] <reference-dir> -- CADD version 1.5
 
-# ask which parts of CADD the user wants to install
-read -p "Do you want to install the virtual environment with all CADD dependencies via conda? (y)/n " CHOICE
-case "$CHOICE" in
-    y|Y ) ENV=true;;
-    n|N ) ENV=false;;
-    * ) ENV=true; echo "Assuming Yes.";;
-esac
+where:
+    -h  show this help text
+    -d  Install dependecies
+    -v  Install CADD version (either GRCh37, GRCh38 or GRCh38v15 [default: GRCh37])
+    -a  Download annotations
+    -p  Download prescored variants with annotations
+    -n  Download prescored variants without annotations
+    -i  Download prescored indels. Only indels in ClinVar and gnomAD are included
+    -r  Download references and annotations to this path [default: ${BASEDIR}/data]"
 
-read -p "Do you want to install CADD v1.5 for GRCh38/hg38? (y)/n " CHOICE
-case "$CHOICE" in
-    y|Y ) GRCh38v15=true;;
-    n|N ) GRCh38v15=false;;
-    * ) GRCh38v15=true; echo "Assuming Yes.";;
-esac
+unset OPTARG
+unset OPTIND
 
-read -p "Do you want to install CADD v1.4 for GRCh37/hg19? (y)/n " CHOICE
-case "$CHOICE" in
-    y|Y ) GRCh37=true;;
-    n|N ) GRCh37=false;;
-    * ) GRCh37=true; echo "Assuming Yes.";;
-esac
+## Presets
+ENV=false         # Download dependencies via conda
+GRCh37=true       # Install CADD v1.4 for GRCh37
+GRCh38=false      # Install CADD v1.4 for GRCh38
+GRCh38v15=false   # Install CADD v1.5 for GRCh38
+ANNOTATIONS=false # Dowload annotations
+PRESCORE=true    # Download presecored snv variants
+INCANNO=false     # Download prescored variants for scoring with annotations
+NOANNO=false      # Download prescored variants for scoring without annotations
+INDELS=false      # Download prescored indel variants. Only indels from ClinVar, gnomAD/TOPMed etc.
+REFERENCE_DIR=${BASEDIR}/data
 
-read -p "Do you want to install CADD v1.4 for GRCh38/hg38? Note that this version has been replaced by CADD v1.5 y/(n) " CHOICE
-case "$CHOICE" in
-    y|Y ) GRCh38=true;;
-    n|N ) GRCh38=false;;
-    * ) GRCh38=false; echo "Assuming No.";;
-esac
+while getopts ':hdv:apnir:' option; do
+  case "$option" in
+    h) echo "$usage"
+        exit
+        ;;
+    d) ENV=true
+        ;;
+    v) VERSION=$OPTARG
+        ;;
+    a) ANNOTATIONS=true
+        ;;
+    p) INCANNO=true
+        ;;
+    n) NOANNO=true
+        ;;
+    i) INDELS=true
+        ;;
+    r) REFERENCE_DIR=$OPTARG
+        ;;
+    :) echo "Option -$OPTARG requires an argument." >&2
+        exit 1
+        ;;
+    \?) printf "illegal option: -%s\n" "$OPTARG" >&2
+        echo "$usage" >&2
+        exit 1
+        ;;
+  esac
+done
+shift $((OPTIND-1))
 
-if [ "$GRCh37" = false ] && [ "$GRCh38" = false ] && [ "$GRCh38v15" = false ]
-then
-    echo "You have choosen to not install any of the available CADD models. Discontinuing installation.";
-    exit 0;
+## Check version argument
+if [ -n "$VERSION" ] && [ "$VERSION" != "GRCh37" ]; then
+    GRCH37=false
+    if [ "$VERSION" == "GRCh38" ]; then
+        GRCh38=true
+    elif [ "$VERSION" == "GRCh38v15" ]; then
+        GRCh38v15=true
+    else
+       echo "illegal argument for option -v" >&2
+       exit 1;
+    fi
 fi
 
-read -p "Do you want to load annotations (Annotations can also be downloaded manually from the website)? (y)/n " CHOICE
-case "$CHOICE" in
-    y|Y ) ANNOTATIONS=true;;
-    n|N ) ANNOTATIONS=false;;
-    * ) ANNOTATIONS=true; echo "Assuming Yes.";;
-esac
-
-read -p "Do you want to load prescored variants (Makes SNV calling faster. Can also be loaded/installed later.)? y/(n) " CHOICE
-case "$CHOICE" in
-    y|Y ) PRESCORE=true;;
-    n|N ) PRESCORE=false;;
-    * ) PRESCORE=false; echo "Assuming No.";;
-esac
-
-if [ "$PRESCORE" = true ]
-then
-    read -p "Do you want to load prescored variants for scoring with annotations (Warning: These files are very big)? y/(n) " CHOICE
-    case "$CHOICE" in
-        y|Y ) INCANNO=true;;
-        n|N ) INCANNO=false;;
-        * ) INCANNO=false; echo "Assuming No.";;
-    esac
-    read -p "Do you want to load prescored variants for scoring without annotations? y/(n) " CHOICE
-    case "$CHOICE" in
-        y|Y ) NOANNO=true;;
-        n|N ) NOCANNO=false;;
-        * ) NOANNO=false; echo "Assuming No.";;
-    esac
-    read -p "Do you also want to load prescored InDels? We provide scores for well known InDels from sources like ClinVar, gnomAD/TOPMed etc. y/(n) " CHOICE
-    case "$CHOICE" in
-        y|Y ) INDELS=true;;
-        n|N ) INDELS=false;;
-        * ) INDELS=false; echo "Assuming No.";;
-    esac
-fi
+## Convert potetnial relative path
+REFERENCE_DIR=$(readlink -f "$REFERENCE_DIR" )
 
 ### FILE CONFIGURATION
 
@@ -214,14 +211,6 @@ then
     fi
 fi
 
-echo "Please make sure you have enough disk space available."
-
-read -p "Ready to continue? (y)/n " CHOICE
-case "$CHOICE" in
-    n|N ) echo "You canceled the installation."; exit 0;;
-    * ) echo "Starting installation. This will take some time.";;
-esac
-
 ### INSTALLATION
 
 if [ "$ENV" = true ]
@@ -257,8 +246,10 @@ then
     if [ "$ANNOTATIONS" = true ]
     then
         echo "Downloading CADD annotations for GRCh37-v1.4 (98 GB)"
-        mkdir -p data/annotations/
-        cd data/annotations/
+        if [ ! -d ${REFERENCE_DIR}/annotations ]; then
+            mkdir ${REFERENCE_DIR}/annotations
+        fi
+        cd ${REFERENCE_DIR}/annotations/
         wget -c ${ANNOTATION_GRCh37} -O annotationsGRCh37.tar.gz
         wget ${ANNOTATION_GRCh37}.md5 -O annotationsGRCh37.tar.gz.md5
         md5sum -c annotationsGRCh37.tar.gz.md5
@@ -274,8 +265,8 @@ then
     then
         if [ "$NOANNO" = true ]
         then
-            mkdir -p data/prescored/GRCh37_v1.4/no_anno/
-            cd data/prescored/GRCh37_v1.4/no_anno/
+            mkdir -p ${REFERENCE_DIR}/prescored/GRCh37_v1.4/no_anno/
+            cd ${REFERENCE_DIR}/prescored/GRCh37_v1.4/no_anno/
             download_variantfile "Downloading prescored SNV without annotations for GRCh37-v1.4 (78 GB)" ${PRESCORE_GRCh37}
             if [ "$INDELS" = true ]
             then
@@ -286,8 +277,8 @@ then
 
         if [ "$INCANNO" = true ]
         then
-            mkdir -p data/prescored/GRCh37_v1.4/incl_anno/
-            cd data/prescored/GRCh37_v1.4/incl_anno/
+            mkdir -p ${REFERENCE_DIR}/prescored/GRCh37_v1.4/incl_anno/
+            cd ${REFERENCE_DIR}/prescored/GRCh37_v1.4/incl_anno/
             download_variantfile "Downloading prescored SNV inclusive annotations for GRCh37-v1.4 (231 GB)" ${PRESCORE_INCANNO_GRCh37}
             if [ "$INDELS" = true ]
             then
@@ -304,8 +295,10 @@ then
     if [ "$ANNOTATIONS" = true ]
     then
         echo "Downloading CADD annotations for GRCh38-v1.4 (194 GB)"
-        mkdir -p data/annotations/
-        cd data/annotations/
+        if [ ! -d ${REFERENCE_DIR}/annotations ]; then
+            mkdir ${REFERENCE_DIR}/annotations
+        fi
+        cd ${REFERENCE_DIR}/annotations/
         wget -c $ANNOTATION_GRCh38 -O annotationsGRCh38.tar.gz
         wget $ANNOTATION_GRCh38.md5 -O annotationsGRCh38.tar.gz.md5
         md5sum -c annotationsGRCh38.tar.gz.md5
@@ -321,8 +314,8 @@ then
     then
         if [ "$NOANNO" = true ]
         then
-            mkdir -p data/prescored/GRCh38_v1.4/no_anno/
-            cd data/prescored/GRCh38_v1.4/no_anno/
+            mkdir -p ${REFERENCE_DIR}/prescored/GRCh38_v1.4/no_anno/
+            cd ${REFERENCE_DIR}/prescored/GRCh38_v1.4/no_anno/
             download_variantfile "Downloading prescored SNV without annotations for GRCh38-v1.4 (79 GB)" ${PRESCORE_GRCh38}
             if [ "$INDELS" = true ]
             then
@@ -333,8 +326,8 @@ then
 
         if [ "$INCANNO" = true ]
         then
-            mkdir -p data/prescored/GRCh38_v1.4/incl_anno/
-            cd data/prescored/GRCh38_v1.4/incl_anno/
+            mkdir -p ${REFERENCE_DIR}/prescored/GRCh38_v1.4/incl_anno/
+            cd ${REFERENCE_DIR}/prescored/GRCh38_v1.4/incl_anno/
             download_variantfile "Downloading prescored SNV inclusive annotations for GRCh38-v1.4 (323 GB)" ${PRESCORE_INCANNO_GRCh38}
             if [ "$INDELS" = true ]
             then
@@ -351,8 +344,10 @@ then
     if [ "$ANNOTATIONS" = true ]
     then
         echo "Downloading CADD annotations for GRCh38-v1.5 (168 GB)"
-        mkdir -p data/annotations/
-        cd data/annotations/
+        if [ ! -d ${REFERENCE_DIR}/annotations ]; then
+            mkdir ${REFERENCE_DIR}/annotations
+        fi
+        cd ${REFERENCE_DIR}/annotations/
         wget -c ${ANNOTATION_GRCh38v15} -O annotationsGRCh38.tar.gz
         wget ${ANNOTATION_GRCh38v15}.md5 -O annotationsGRCh38.tar.gz.md5
         md5sum -c annotationsGRCh38.tar.gz.md5
@@ -367,8 +362,8 @@ then
     then
         if [ "$NOANNO" = true ]
         then
-            mkdir -p data/prescored/GRCh38_v1.5/no_anno/
-            cd data/prescored/GRCh38_v1.5/no_anno/
+            mkdir -p ${REFERENCE_DIR}/prescored/GRCh38_v1.5/no_anno/
+            cd ${REFERENCE_DIR}/prescored/GRCh38_v1.5/no_anno/
             download_variantfile "Downloading prescored SNV without annotations for GRCh38-v1.5 (80 GB)" ${PRESCORE_GRCh38v15}
             if [ "$INDELS" = true ]
             then
@@ -379,8 +374,8 @@ then
 
         if [ "$INCANNO" = true ]
         then
-            mkdir -p data/prescored/GRCh38_v1.5/incl_anno/
-            cd data/prescored/GRCh38_v1.5/incl_anno/
+            mkdir -p ${REFERENCE_DIR}/prescored/GRCh38_v1.5/incl_anno/
+            cd ${REFERENCE_DIR}/prescored/GRCh38_v1.5/incl_anno/
             download_variantfile "Downloading prescored SNV inclusive annotations for GRCh38-v1.5 (292 GB)" ${PRESCORE_INCANNO_GRCh38v15}
             if [ "$INDELS" = true ]
             then

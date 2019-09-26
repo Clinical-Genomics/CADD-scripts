@@ -1,6 +1,9 @@
 #!/bin/bash
 
-usage="$(basename "$0") [-o <outfile>] [-g <genomebuild>] [-v <caddversion>] [-a] <infile>  -- CADD version 1.5
+SCRIPT=$(readlink -f "$0")
+export CADD=$(dirname "$SCRIPT")
+
+usage="$(basename "$0") [-o <outfile>] [-g <genomebuild>] [-v <caddversion>] [-a] <infile> [-r] <reference-dir> -- CADD version 1.5
 
 where:
     -h  show this help text
@@ -8,7 +11,8 @@ where:
     -g  genome build (supported are GRCh37 and GRCh38 [default: GRCh38])
     -v  CADD version (either v1.4 or v1.5 [default: v1.5])
     -a  include annotation in output
-        input vcf of vcf.gz file (required)"
+        input vcf of vcf.gz file (required)
+    -r  path to downloaded annotations and references [default: ${CADD}/data"
 
 unset OPTARG
 unset OPTIND
@@ -17,7 +21,9 @@ GENOMEBUILD="GRCh38"
 ANNOTATION=false
 OUTFILE=""
 VERSION="v1.5"
-while getopts ':ho:g:v:a' option; do
+REFERENCE_DIR=${CADD}/data
+
+while getopts ':ho:g:v:ar:' option; do
   case "$option" in
     h) echo "$usage"
        exit
@@ -29,6 +35,8 @@ while getopts ':ho:g:v:a' option; do
     v) VERSION=$OPTARG
        ;;
     a) ANNOTATION=true
+       ;;
+    r) REFERENCE_DIR=$OPTARG
        ;;
    \?) printf "illegal option: -%s\n" "$OPTARG" >&2
        echo "$usage" >&2
@@ -50,9 +58,6 @@ FILENAME=$(basename $INFILE)
 NAME=${FILENAME%\.vcf*}
 FILEDIR=$(dirname $INFILE)
 FILEFORMAT=${FILENAME#$NAME\.}
-
-SCRIPT=$(readlink -f "$0")
-export CADD=$(dirname "$SCRIPT")
 
 if [ "$FILEFORMAT" != "vcf" ] && [ "$FILEFORMAT" != "vcf.gz" ]
 then
@@ -91,7 +96,7 @@ else
 fi
 
 # Pipeline configuration
-PRESCORED_FOLDER=$CADD/data/prescored/${GENOMEBUILD}_${VERSION}/$ANNO_FOLDER
+PRESCORED_FOLDER=${REFERENCE_DIR}/prescored/${GENOMEBUILD}_${VERSION}/$ANNO_FOLDER
 REFERENCE_CONFIG=$CADD/config/references_${GENOMEBUILD}_${VERSION}.cfg
 IMPUTE_CONFIG=$CADD/config/impute_${GENOMEBUILD}_${VERSION}.cfg
 MODEL=$CADD/data/models/$GENOMEBUILD/CADD${VERSION}-$GENOMEBUILD.mod
@@ -161,7 +166,7 @@ fi
 # Variant annotation
 cat $TMP_VCF \
 | vep --quiet --cache --buffer 1000 --no_stats --offline --vcf \
-    --dir $CADD/data/annotations/${GENOMEBUILD}_${VERSION}/vep \
+    --dir ${REFERENCE_DIR}/annotations/${GENOMEBUILD}_${VERSION}/vep \
     --species homo_sapiens --db_version=$DBVERSION \
     --assembly $GENOMEBUILD --regulatory --sift b \
     --polyphen b --per_gene --ccds --domains --numbers --canonical \
