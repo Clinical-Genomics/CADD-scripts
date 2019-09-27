@@ -23,7 +23,7 @@ usage="$(basename "$0") [-h] [-d] [-v <caddversion>] [-a] [-p] [-n] [-i] [-r] <r
 where:
     -h  show this help text
     -d  Install dependecies
-    -v  Install CADD version (either GRCh37, GRCh38 or GRCh38v15 [default: GRCh37])
+    -v  Install CADD version (either GRCh37, GRCh38 or GRCh38v15), can be specified multiple times
     -a  Download annotations
     -p  Download prescored variants with annotations
     -n  Download prescored variants without annotations
@@ -52,7 +52,7 @@ while getopts ':hdv:apnir:' option; do
         ;;
     d) ENV=true
         ;;
-    v) VERSION=$OPTARG
+    v) VERSIONS+=("$OPTARG")
         ;;
     a) ANNOTATIONS=true
         ;;
@@ -75,10 +75,10 @@ while getopts ':hdv:apnir:' option; do
 done
 shift $((OPTIND-1))
 
-## Check version argument
-if [ -n "$VERSION" ] && [ "$VERSION" != "GRCh37" ]; then
-    GRCH37=false
-    if [ "$VERSION" == "GRCh38" ]; then
+for VERSION in ${VERSIONS[@]}; do
+    if [ "$VERSION" == "GRCh37" ]; then
+        GRCh37=true
+    elif [ "$VERSION" == "GRCh38" ]; then
         GRCh38=true
     elif [ "$VERSION" == "GRCh38v15" ]; then
         GRCh38v15=true
@@ -86,7 +86,7 @@ if [ -n "$VERSION" ] && [ "$VERSION" != "GRCh37" ]; then
        echo "illegal argument for option -v" >&2
        exit 1;
     fi
-fi
+done
 
 ## Convert potetnial relative path
 REFERENCE_DIR=$(readlink -f "$REFERENCE_DIR" )
