@@ -3,7 +3,7 @@
 SCRIPT=$(readlink -f "$0")
 export CADD=$(dirname "$SCRIPT")
 
-usage="$(basename "$0") [-o <outfile>] [-g <genomebuild>] [-v <caddversion>] [-a] [-r] <reference-dir> [-t] <temporary-dir> <infile> -- CADD version 1.5
+usage="$(basename "$0") [-o <outfile>] [-g <genomebuild>] [-v <caddversion>] [-a] [-t] <temporary-dir> <infile> -- CADD version 1.5
 
 where:
     -h  show this help text
@@ -11,7 +11,6 @@ where:
     -g  genome build (supported are GRCh37 and GRCh38 [default: GRCh38])
     -v  CADD version (either v1.4 or v1.5 [default: v1.5])
     -a  include annotation in output
-    -r  path to downloaded annotations and references [default: ${CADD}/data
     -t  temporary folder path outside container
         input vcf of vcf.gz file (required)"
 
@@ -24,7 +23,7 @@ OUTFILE=""
 VERSION="v1.5"
 REFERENCE_DIR=${CADD}/data
 
-while getopts ':ho:g:v:ar:t:' option; do
+while getopts ':ho:g:v:at:' option; do
   case "$option" in
     h) echo "$usage"
        exit
@@ -36,8 +35,6 @@ while getopts ':ho:g:v:ar:t:' option; do
     v) VERSION=$OPTARG
        ;;
     a) ANNOTATION=true
-       ;;
-    r) REFERENCE_DIR=$OPTARG
        ;;
     t) TMP_FOLDER=$OPTARG
        ;;
@@ -106,7 +103,7 @@ then
 fi
 
 # Pipeline configuration
-PRESCORED_FOLDER=${REFERENCE_DIR}/prescored/${GENOMEBUILD}_${VERSION}/$ANNO_FOLDER
+PRESCORED_FOLDER=$CADD/prescored/${GENOMEBUILD}_${VERSION}/$ANNO_FOLDER
 REFERENCE_CONFIG=$CADD/config/references_${GENOMEBUILD}_${VERSION}.cfg
 IMPUTE_CONFIG=$CADD/config/impute_${GENOMEBUILD}_${VERSION}.cfg
 MODEL=$CADD/data/models/$GENOMEBUILD/CADD${VERSION}-$GENOMEBUILD.mod
@@ -178,7 +175,7 @@ fi
 # Variant annotation
 cat $TMP_VCF \
 | vep --quiet --cache --buffer 1000 --no_stats --offline --vcf \
-    --dir ${REFERENCE_DIR}/annotations/${GENOMEBUILD}_${VERSION}/vep \
+    --dir $CADD/annotations/${GENOMEBUILD}_${VERSION}/vep \
     --species homo_sapiens --db_version=$DBVERSION \
     --assembly $GENOMEBUILD --regulatory --sift b \
     --polyphen b --per_gene --ccds --domains --numbers --canonical \
