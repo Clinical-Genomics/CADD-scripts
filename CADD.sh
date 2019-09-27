@@ -12,7 +12,8 @@ where:
     -v  CADD version (either v1.4 or v1.5 [default: v1.5])
     -a  include annotation in output
         input vcf of vcf.gz file (required)
-    -r  path to downloaded annotations and references [default: ${CADD}/data"
+    -r  path to downloaded annotations and references [default: ${CADD}/data
+    -t  temporary folder path outside container"
 
 unset OPTARG
 unset OPTIND
@@ -23,7 +24,7 @@ OUTFILE=""
 VERSION="v1.5"
 REFERENCE_DIR=${CADD}/data
 
-while getopts ':ho:g:v:ar:' option; do
+while getopts ':ho:g:v:ar:t:' option; do
   case "$option" in
     h) echo "$usage"
        exit
@@ -37,6 +38,8 @@ while getopts ':ho:g:v:ar:' option; do
     a) ANNOTATION=true
        ;;
     r) REFERENCE_DIR=$OPTARG
+       ;;
+    t) TMP_FOLDER=$OPTARG
        ;;
    \?) printf "illegal option: -%s\n" "$OPTARG" >&2
        echo "$usage" >&2
@@ -111,8 +114,8 @@ fi
 
 # Setup temporary folder that is removed reliably on exit and is outside of
 # the CADD-scripts directory.
-TMP_FOLDER=$(mktemp -d)
-trap "rm -rf $TMP_FOLDER" ERR EXIT
+
+trap "rm -rf $TMP_PRE $TMP_VCF $TMP_TMP_ANNO $TMP_IMP $TMP_NOV" ERR EXIT
 
 # Temp files
 TMP_PRE=$TMP_FOLDER/$NAME.pre.tsv.gz
@@ -121,7 +124,9 @@ TMP_ANNO=$TMP_FOLDER/$NAME.anno.tsv.gz
 TMP_IMP=$TMP_FOLDER/$NAME.csv.gz
 TMP_NOV=$TMP_FOLDER/$NAME.nov.tsv.gz
 
-mkdir -p $TMP_FOLDER
+if [ ! -d $TMP_FOLDER ]; then
+    mkdir -p $TMP_FOLDER
+fi
 
 ### Pipeline
 
