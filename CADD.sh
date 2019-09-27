@@ -134,9 +134,9 @@ fi
 # Loading the environment
 if [ "$VERSION" == "v1.4" ]
 then
-    conda activate cadd-env
+    source activate cadd-env
 else
-    conda activate cadd-env-v1.5
+    source activate cadd-env-v1.5
 fi
 
 # File preparation
