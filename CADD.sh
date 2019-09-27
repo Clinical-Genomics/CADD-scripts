@@ -3,7 +3,7 @@
 SCRIPT=$(readlink -f "$0")
 export CADD=$(dirname "$SCRIPT")
 
-usage="$(basename "$0") [-o <outfile>] [-g <genomebuild>] [-v <caddversion>] [-a] <infile> [-r] <reference-dir> -- CADD version 1.5
+usage="$(basename "$0") [-o <outfile>] [-g <genomebuild>] [-v <caddversion>] [-a] [-r] <reference-dir> [-t] <temporary-dir> <infile> -- CADD version 1.5
 
 where:
     -h  show this help text
@@ -11,9 +11,9 @@ where:
     -g  genome build (supported are GRCh37 and GRCh38 [default: GRCh38])
     -v  CADD version (either v1.4 or v1.5 [default: v1.5])
     -a  include annotation in output
-        input vcf of vcf.gz file (required)
     -r  path to downloaded annotations and references [default: ${CADD}/data
-    -t  temporary folder path outside container"
+    -t  temporary folder path outside container
+        input vcf of vcf.gz file (required)"
 
 unset OPTARG
 unset OPTIND
@@ -97,6 +97,12 @@ then
     ANNO_FOLDER="incl_anno"
 else
     ANNO_FOLDER="no_anno"
+fi
+
+if [ "$TMP_FOLDER" == "" ]
+then
+    echo "Please supply a temp_folder"
+    exit 1
 fi
 
 # Pipeline configuration
