@@ -128,9 +128,9 @@ mkdir -p $TMP_FOLDER
 # Loading the environment
 if [ "$VERSION" == "v1.4" ]
 then
-    source activate cadd-env
+    conda activate cadd-env
 else
-    source activate cadd-env-v1.5
+    conda activate cadd-env-v1.5
 fi
 
 # File preparation
